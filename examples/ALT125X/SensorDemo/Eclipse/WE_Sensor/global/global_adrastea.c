@@ -1,7 +1,8 @@
 #include "global_adrastea.h"
 
 void WE_UART_Transmit(uint32_t *handle, const char *buf, uint32_t len)
-{	//printf("In 42 WETxUarT, buf : %s", buf);
+{
+	// SA
 	serial_write(handle, buf, len);
 }
 

@@ -75,7 +75,7 @@ typedef struct {
     int keepalivetime;
 } JsonConfig;
 
-
+size_t test_str_len= 0;
 #define MINICONSOLE_UART_INSTANCE ACTIVE_UARTF0
 #define WE_SUCCESS   0
 #define WE_FAIL     -1
@@ -421,66 +421,6 @@ void Adrastea_Transmit(serial_handle *handle, const char *buf, uint32_t len)
 	 WE_UART_Transmit(handle,buf, len);
 }
 
-
-/**
- * @brief Waits for the response from the module after a request.
- *
- * @param[in] maxTimeMs Maximum wait time in milliseconds
- * @param[in] expectedStatus Status to wait for
- * @param[out] pOutResponse Received response text (if any) will be written to this buffer (optional)
- *
- * @return true if successful, false otherwise
- */
-/*bool Adrastea_WaitForConfirm(uint32_t maxTimeMs, Adrastea_CNFStatus_t expectedStatus, char *pOutResponse)
-{
-
-	Adrastea_cmdConfirmStatus = Adrastea_CNFStatus_Invalid;
-
-	uint32_t t0 = WE_GetTick();
-
-	while (1)
-	{
-		if (Adrastea_CNFStatus_Invalid != Adrastea_cmdConfirmStatus)
-		{
-			// Store current time to enable check for min. time between received confirm and next command.
-			Adrastea_lastConfirmTimeUsec = WE_GetTickMicroseconds();
-			Adrastea_requestPending = false;
-			Adrastea_responseincoming = false;
-			if (Adrastea_cmdConfirmStatus == expectedStatus)
-			{
-				if (NULL != pOutResponse)
-				{
-					// Copy response for further processing
-					memcpy(pOutResponse, Adrastea_currentResponseText, Adrastea_currentResponseLength);
-				}
-				return true;
-			}
-			else
-			{
-				//printf("Write nok 7.\r\n");
-				return false;
-			}
-		}
-
-		uint32_t now = WE_GetTick();
-		if (now - t0 > maxTimeMs)
-		{
-			// Timeout
-			break;
-		}
-
-		if (Adrastea_waitTimeStepUsec > 0)
-		{
-			WE_DelayMicroseconds(Adrastea_waitTimeStepUsec);
-		}
-	}
-
-	Adrastea_responseincoming = false;
-	Adrastea_requestPending = false;
-	return true;
-	//return false;
-}
-*/
 
 /**
  * @brief Waits for the response from the module after a request.
@@ -870,18 +810,8 @@ bool Adrastea_CheckATMode()
 
 // ========================================================== NEW IoTCentral PnP functions  ===================================================================================
 
-/*extern void rxUartTask(void *pvParameters)
-{
-	char c;
-    while (1) {
-    	serial_read(modemUartHandle, &c, 1);
-    	serial_write(userUartHandle,&c,1);
-    }
-} */
+extern void rxUartTask(void *pvParameters) {
 
-
-void rxUartTask(void *pvParameters)
-{
 	int currentChar = 0;
 	while (1) {
 		char c;
@@ -907,116 +837,21 @@ void rxUartTask(void *pvParameters)
 					prevResponse = false;
 				}
 				else if (strncmp(responseBuffer, "+CEREG: 5", strlen("+CEREG: 5")) == 0) {
-				    // Check if connected to base station, registered and roaming
-				    //  printf("SIM is Registered - +CEREG: 5,\r\n");
-				    SIM_Registered = true;
+					// Check if connected to base station, registered and roaming
+					printf("SIM is Registered - +CEREG: 5,\r\n");
+					SIM_Registered = true;
+				}
+
+				else  if (strncmp(responseBuffer, "%MQTTEVU:\"CONCONF\"", strlen("%MQTTEVU:\"CONCONF\"")) == 0) {
+					printf("Connected to MQTT Broker\r\n");
+
 				}
 
 
-
-
-				else  if (strncmp(responseBuffer, "%MQTTEVU:\"PUBRCV\"", strlen("%MQTTEVU:\"PUBRCV\"")) == 0) {
-					//char MQTT_pubrecv[768];
-					//strcpy(MQTT_pubrecv, responseBuffer);
-					//printf("----BEGIN HEX----");
-					//for(currentChar = 0; currentChar < strlen(responseBuffer); currentChar++){
-					//	printf("%x",responseBuffer[currentChar]);
-					//}
-					//printf("----END HEX----");
-
-					// Step 1: Search for "operationId" in the buffer
-					//printf("response buffer is: %s\n", MQTT_pubrecv);
-
-					//printf("MQTT recv is: %s\n", MQTT_recv);
-				}
-
-				else if(strncmp(responseBuffer, "{\"operationId\"", strlen("{\"\"")) == 0)
-				{
-					char MQTT_recv[768];
-					strcpy(MQTT_recv, responseBuffer);
-
-					printf("response buffer is: %s\n", MQTT_recv);
-					// Call extractOperationId and store the result in operationId
-					extractOperationIdAndAssignedHub(MQTT_recv, operationId, assignedHub);
-					printf("Extracted operationId: %s\n", operationId);
-
-					printf("Extracted assignedHub: %s\n", assignedHub);
-
-				}
-
-				// Check if the response starts with "%CERTCMD"
-				/*else if (strncmp(responseBuffer, "%CERTCMD:", strlen("%CERTCMD:")) == 0) {
-	                	printf("response buffer us : %s\n", responseBuffer);
-
-
-	                	// Skip "%CERTCMD" and tokenize the list of file names using ',' as the delimiter
-	                	char *fileList = responseBuffer + strlen("%CERTCMD:");
-	                	char *token = strtok(fileList, ",");
-	                	printf("response buffer us : %s\n", responseBuffer);
-	                	printf("response fileList us : %s\n", fileList);
-	                	// Iterate through the tokens and compare each with the target file name
-	                	while (token != NULL) {
-	                		// Trim leading and trailing spaces from the token
-	                		printf("token %s \n", token);
-	                		const char *trimmedToken = token;
-	                		while (*trimmedToken == ' ' || *trimmedToken == '\t') {
-	                			trimmedToken++;
-	                		}
-
-	                		// Compare the trimmed token with the target file name
-	                		if (strcmp(trimmedToken, "config.json") == 0) {
-	                			printf("HAS JSON FILE ");  // File name found in the list
-	                			JsonFile = true;
-	                		}
-
-	                		// Get the next token
-	                		token = strtok(NULL, ",");
-	                	}
-	                	printf("NO JSON FILE");
-	                	 // File name not found in the list or response doesn't start with "%CERTCMD"
-	                }
-
-				 */
-
-				// Clear the response buffer
-				responseIndex = 0;
-			} else if (responseIndex < RESPONSE_BUFFER_SIZE - 1) {
-				// Buffer the character for response processing
-				responseBuffer[responseIndex] = c;
-				responseIndex++;
 			}
 		}
+
 	}
-
-}
-
-// Function to extract operationId and assignedHub
-void extractOperationIdAndAssignedHub(char *inputString, char *operationId, char *assignedHub) {
-    // Find the position of "operationId":
-    char *operationIdStart = strstr(inputString, "\"operationId\":");
-    if (operationIdStart != NULL) {
-        operationIdStart += strlen("\"operationId\":\"");
-        // Find the position of the closing quote after the operationId
-        char *closingQuotePosition = strchr(operationIdStart, '"');
-        if (closingQuotePosition != NULL) {
-            int operationIdLength = closingQuotePosition - operationIdStart;
-            strncpy(operationId, operationIdStart, operationIdLength);
-            operationId[operationIdLength] = '\0';
-        }
-    }
-
-    // Find the position of "assignedHub":
-    char *assignedHubStart = strstr(inputString, "\"assignedHub\":");
-    if (assignedHubStart != NULL) {
-        assignedHubStart += strlen("\"assignedHub\":\"");
-        // Find the position of the closing quote after the assignedHub
-        char *closingQuotePosition = strchr(assignedHubStart, '"');
-        if (closingQuotePosition != NULL) {
-            int assignedHubLength = closingQuotePosition - assignedHubStart;
-            strncpy(assignedHub, assignedHubStart, assignedHubLength);
-            assignedHub[assignedHubLength] = '\0';
-        }
-    }
 }
 
 
@@ -1044,169 +879,14 @@ int Init_Uart()
 
 	modemUartHandle = serial_open(&uartInit);
 
-    // Create task for actively checking data between Internal UART and sending to external UART
+	// Create task for actively checking data between Internal UART and sending to external UART
 	xTaskCreate(rxUartTask, /* The function that implements the task. */
-		  "debugUart", /* The text name assigned to the task - for debug only as it is not used by
+			"debugUart", /* The text name assigned to the task - for debug only as it is not used by
 						the kernel. */
-		  configMINIMAL_STACK_SIZE * 2, /* The size of the stack to allocate to the task. */
-		  (void *)NULL,          /* The parameter passed to the task */
-		  configMAX_PRIORITIES - 1, /* The priority assigned to the task - minimal priority. */
-		  &gDebugUartHandle);
-
-	return WE_SUCCESS;
-}
-
-int connect_IoTCentral()
-{
-	WE_Delay(1000);
-	// Check Ok
-	//sprintf(cmdBuffer, "AT%%CERTCMD=\"DIR\"\r\n");
-	strcpy(cmdBuffer,"AT\r\n");
-	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-	WE_Delay(2000);
-	//Adrastea_HandleRxLine();
-
-	// Check Directory
-	ATProprietary_File_Names_List_t filesnamesList;
-	ATProprietary_ListCredentials(&filesnamesList);
-	WE_Delay(1000);
-
-	// Store value of input parameters to connect to IoTCentral
-	azureconfig_input();
-
-
-
-
-	// Send azure rootcertificate to Adrastea
-	ATProprietary_WriteCredential("azrootca2.pem", ATProprietary_Credential_Format_Certificate, azrootca);
-	WE_Delay(100);
-
-	// Send azdev cert key to Adrastea
-	ATProprietary_WriteCredential("azdevcert2.pem.crt", ATProprietary_Credential_Format_Certificate, azdevcert);
-    WE_Delay(100);
-
-    // Send azdev private key to Adrastea
-    ATProprietary_WriteCredential("azdevkey2.pem.key", ATProprietary_Credential_Format_Private_Key, azdevkey);
-    WE_Delay(100);
-
-    // Read azure root cert
-    ATProprietary_ReadCredential("azrootca2.pem",&read_file,1024);
-    WE_Delay(500);
-    if (prevResponse) {
-    	printf("Root File Found\n");
-    }
-    else
-    {
-    	printf("Root CA file not there\n");
-    }
-
-    //Get JSON data from predefined CONFIGURATION_DATA structure
-    char version[8];
-    char scope[256];
-
-    if (extractDataFromJSON(CONFIGURATION_DATA, "version", version, sizeof(version))) {
-    	printf("Version: %s\n", version);
-    } else {
-    	printf("Version not found or JSON is malformed.\n");
-    }
-
-    if (extractDataFromJSON(CONFIGURATION_DATA, "scopeId", scope, sizeof(scope))) {
-    	printf("Scope ID: %s\n", scope);
-    } else {
-    	printf("Scope ID not found or JSON is malformed.\n");
-    }
-
-    // Add private key to certificate
-    ATProprietary_AddTLSProfile(1, "azrootca2.pem", NULL, "azdevcert2.pem.crt", "azdevkey2.pem.key", NULL, NULL);
-    WE_Delay(2000);
-
-    ATMQTT_SetMQTTUnsolicitedNotificationEvents(ATMQTT_Event_All, 1);
-    WE_Delay(2000);
-
-    //sprintf(cmdBuffer, "AT%%MQTTCFG=\"NODES\",1,\"adrastea-test-dev-1\",\"global.azure-devices-provisioning.net\",\"0ne006E0511/registrations/adrastea-test-dev-1/api-version=2021-06-01&model-id=dtmi:calypso:Adrastea_fa;1\"\r\n");
-    //sprintf(cmdBuffer, "AT%%MQTTCFG=\"NODES\",%d,\"adrastea-test-dev-1\"," AZURE_DPS_ADDRESS "," AZURE_DPS_USERNAME "\r\n", ATMQTT_Conn_ID_1);
-    //serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-    ATMQTT_ConfigureNodes(1,"adrastea-test-dev-1", AZURE_DPS_ADDRESS,AZURE_DPS_USERNAME,NULL);
-    WE_Delay(2000);
-
-	// Configure cloud parameters
-    ATMQTT_ConfigureProtocol(1, 1200, 0);
-    WE_Delay(2000);
-
-    ATMQTT_ConfigureIP(ATMQTT_Conn_ID_1, ATMQTT_IP_Session_ID_Invalid, ATMQTT_IP_Addr_Format_IPv4v6, 8883);
-    WE_Delay(2000);
-
-    // Configure TLS parmeter
-    ATMQTT_ConfigureTLS(ATMQTT_Conn_ID_1, ATCommon_Auth_Mode_Mutual, 1);
-    WE_Delay(2000);
-
-    ATMQTT_Connect(ATMQTT_Conn_ID_1);
-    WE_Delay(14000);
-
-    // Subscribe to topics
-    ATMQTT_Subscribe(ATMQTT_Conn_ID_1, 0, DEVICE_SUB_TOPIC);
-    WE_Delay(2000);
-
-    // Publish DPS
-    //sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"$dps/registrations/PUT/iotdps-register/?$rid=1\",92\r\n");
-    //serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-
-    //sprintf(cmdBuffer, "{\"registrationId\":\"adrastea-test-dev-1\",\"payload\":{\"modelId\":\"dtmi:calypso:Adrastea_fa;1\"}}\r\n");
-    //serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-    //WE_Delay(10000);
-
-    ATMQTT_Publish(ATMQTT_Conn_ID_1,0,0,DEVICE_PUB_DPS_TOPIC,DEVICE_PAYLOAD_DATA, strlen(DEVICE_PAYLOAD_DATA));
-    WE_Delay(20000);
-
-    // Add private key to certificate
-    ATProprietary_AddTLSProfile(1, "azrootca2.pem", NULL, "azdevcert2.pem.crt", "azdevkey2.pem.key", NULL, NULL);
-    WE_Delay(300);
-
-    // Allows MQTT events
-    ATMQTT_SetMQTTUnsolicitedNotificationEvents(ATMQTT_Event_All, ATMQTT_Conn_ID_1);
-    WE_Delay(200);
-
-    char targetString[256]; // Adjust the size as needed
-    sprintf(targetString, "$dps/registrations/GET/iotdps-get-operationstatus/?$rid=1&operationId=%s", operationId);
-    printf("Resulting string: %s\n", targetString);
-
-    ATMQTT_Publish(ATMQTT_Conn_ID_1,0,0,targetString, NULL, 0);
-    WE_Delay(20000);
-    printf("Extracted assignedHub: %s\n", assignedHub);
-
-    char targetString2[256]; // Adjust the size as needed
-    sprintf(targetString2, "%s/adrastea-test-dev-1/?api-version=2021-04-12&model-id=dtmi:calypso:Adrastea_fa;1", assignedHub );
-    printf("Resulting addr: %s\n", targetString2);
-
-    // Test samp
-    ATMQTT_Disconnect(ATMQTT_Conn_ID_1);
-    WE_Delay(200);
-
-    ATProprietary_AddTLSProfile(1, "azrootca2.pem", NULL, "azdevcert2.pem.crt", "azdevkey2.pem.key", NULL, NULL);
-    WE_Delay(300);
-
-    ATMQTT_SetMQTTUnsolicitedNotificationEvents(ATMQTT_Event_All, ATMQTT_Conn_ID_1);
-    WE_Delay(200);
-
-
-    //
-
-    ATMQTT_ConfigureNodes(1,"adrastea-test-dev-1", assignedHub,targetString2,NULL);
-    // AT%MQTTCFG="NODES",1,"adrastea-test-dev-1","iotc-2f47390e-36a1-4ef6-85ef-c0a659091948.azure-devices.net","iotc-2f47390e-36a1-4ef6-85ef-c0a659091948.azure-devices.net/adrastea-test-dev-1/?api-version=2021-04-12&model-id=dtmi:calypso:Adrastea_fa;1"
-    WE_Delay(8000);
-    // Configure cloud parameters
-    ATMQTT_ConfigureProtocol(1, 1200, 0);
-    WE_Delay(2000);
-
-    ATMQTT_ConfigureIP(ATMQTT_Conn_ID_1, ATMQTT_IP_Session_ID_Invalid, ATMQTT_IP_Addr_Format_IPv4v6, 8883);
-    WE_Delay(2000);
-
-    // Configure TLS parmeter
-    ATMQTT_ConfigureTLS(ATMQTT_Conn_ID_1, ATCommon_Auth_Mode_Mutual, 1);
-    WE_Delay(2000);
-
-    ATMQTT_Connect(ATMQTT_Conn_ID_1);
-    WE_Delay(14000);
+			configMINIMAL_STACK_SIZE * 2, /* The size of the stack to allocate to the task. */
+			(void *)NULL,          /* The parameter passed to the task */
+			configMAX_PRIORITIES - 1, /* The priority assigned to the task - minimal priority. */
+			&gDebugUartHandle);
 
 	return WE_SUCCESS;
 }
@@ -1227,14 +907,14 @@ int connect_mqttdashboard(){
 	AdrasteaExamplesPrint("Configure Node", ret);
 	WE_Delay(4000);
 
-    ret = false;
-    ret = ATMQTT_ConfigureProtocol(1, 1200, 1);
-    AdrasteaExamplesPrint("Configure Protocol", ret);
-    WE_Delay(4000);
+	ret = false;
+	ret = ATMQTT_ConfigureProtocol(1, 1200, 1);
+	AdrasteaExamplesPrint("Configure Protocol", ret);
+	WE_Delay(4000);
 
-    ret = ATMQTT_Connect(1);
-    AdrasteaExamplesPrint("Connect", ret);
-    WE_Delay(4000);
+	ret = ATMQTT_Connect(1);
+	AdrasteaExamplesPrint("Connect", ret);
+	WE_Delay(4000);
 }
 
 // Publish to IoTCentral
@@ -1248,234 +928,43 @@ int IoTCentral_publish(float temperature_PADS, float pressure_PADS, float temper
 }
 
 // Publish to mqttdashboard public broker
-int mqttdashboard_publish(float temperature_PADS, float pressure_PADS, float temperature_TIDS, float ITDSsensorData_temperature, float ITDSsensorData_Xaxis_float, float ITDSsensorData_Yaxis_float, float ITDSsensorData_Zaxis_float){
-	sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"Test\",131\r\n");
-	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-	WE_Delay(2400);
-	//sprintf(cmdBuffer, "{TIDS_temp : \"%f\"}\r\n",temperature_TIDS);
-	sprintf(cmdBuffer, "{TIDS_temp : \"%f\", PADS_press :  \"%f\", ITDS_Xaxis : \"%f\", ITDS_Yaxis : \"%f\", ITDS_Zaxis : \"%f\"}\r\n",temperature_TIDS, pressure_PADS, ITDSsensorData_Xaxis_float, ITDSsensorData_Yaxis_float, ITDSsensorData_Zaxis_float);
-	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-	WE_Delay(PERIOD_IN_MS);
-}
-
-// input parameters for azureconfig function
-/*int azureconfig_input(){
-	// Check if "config.json" file exists
-	ATProprietary_ReadCredential("config.json",&read_file,1024);
-	WE_Delay(500);
-	if (prevResponse==true) {
-		printf("File Found\r\n");
-		JsonFile = true;
-	}
-	else
-	{
-		printf("JSON file not found\r\n\n");
-		JsonFile = false;
-	}
-	printf("Input of CLI open to command parameters using azureconfig [scopeID] [devID] [keepAlivetime]. \r\nPress Ctrl+D to exit.\r\n");
-
+int mqttdashboard_publish(){
+	memset(test_str, 0, sizeof(test_str));
+	test_str_index = 0;
 	// to read from MiniConsole of Host MCU
 	do {
 		serial_read(userUartHandle, &c, 1);
-		if (c != 4) {
+		if (c != 10) {
 			//serial_write(modemUartHandle, &c, 1);
 			serial_write(userUartHandle, &c, 1);
 			test_str[test_str_index++] = c; // Store the character in test_str array
 		}
-	} while (c != 4);
+	} while (c != 10);
 
 	test_str[test_str_index] = '\0'; // Null-terminate the string
-
 	printf("MAP CLI Closed.\r\nUser input:\r\n");
 	printf("%s\n",test_str); // Print the collected input
+	size_t len = strlen(test_str);
+	if (len >= 4) {
+		// Remove the first 4 characters
+		memmove(test_str, test_str + 4, len - 3);}
 
-	// Splitting the string into parameters
-	char *parameters[4]; // Assuming a maximum of 4 parameters
-	int num_parameters = 0;
+	printf("Modified string: %s\n", test_str);
+	test_str_len = strlen(test_str)+1;
 
-	char *token = strtok(test_str, " ");
-	while (token != NULL && num_parameters < 4) {
-		parameters[num_parameters++] = token;
-		token = strtok(NULL, " ");
-	}
+	char* substr = strstr(test_str, "detected");
 
-	// Print the split parameters
-	for (int i = 0; i < num_parameters; i++) {
-		printf("parameter%d = \"%s\"\n", i + 1, parameters[i]);
-	}
-
-	// add each parameter to the variable
-	if (num_parameters >= 1 && strcmp(parameters[0], "azureconfig") == 0) {
-		// Check if parameter1 is "azureconfig"
-		// Store parameter2 in scopeID
-		scopeID = parameters[1];
-
-		// Store parameter3 in devID
-		devID = parameters[2];
-
-		// Store parameter4 in keepalivetime (convert to int)
-		keepalivetime = atoi(parameters[3]);
-	}
-
-	// Print the scopeID etc.
-	printf("scopeID: %s\n", scopeID);
-	printf("devID: %s\n", devID);
-	printf("keepalivetime: %d\n", keepalivetime);
-}*/
-
-int azureconfig_input() {
-	// Check if "config.json" file exists
-	ATProprietary_ReadCredential("config.json", &test_str, 1024);
-	WE_Delay(500);
-	if (prevResponse == true) {
-		printf("File Found\r\n");
-		JsonFile = true;
+	if (substr != NULL) {
+		printf("Bug found.\n");
 	} else {
-		printf("JSON file not found\r\n\n");
-		JsonFile = false;
+		printf("Bug not available.\n");
 	}
 
-	printf("Input of CLI open to command parameters using azureconfig [scopeID] [devID] [keepAlivetime]. \r\nPress Ctrl+D to exit.\r\n");
-
-	// to read from MiniConsole of Host MCU
-	uint32_t t0 = WE_GetTick();
-	uint32_t now;
-
-	do {
-	    now = WE_GetTick();
-	    if ((now - t0) > 8000) {
-	        // Timeout after 8000ms
-	        printf("Timeout. Exiting...\r\n");
-	        break;
-	    }
-
-	        if (WE_serial_read(userUartHandle, &c, 1)) {
-	        // Handle input
-	        if (c == 4) {
-	            // Handle Ctrl+D
-	            printf("Ctrl+D detected. Exiting...\r\n");
-	            break;
-	        }
-
-	        // Handle other characters
-	        serial_write(userUartHandle, &c, 1);
-	        test_str[test_str_index++] = c; // Store the character in test_str array
-	    }
-
-	    // Optionally add a small delay to avoid busy-waiting
-	    // WE_Delay(10);
-
-	} while (1);  // Infinite loop, will break based on conditions
-
-
-
-	test_str[test_str_index] = '\0'; // Null-terminate the string
-
-	printf("MAP CLI Closed.\r\nUser input:\r\n");
-	printf("%s\n",test_str); // Print the collected input
-
-	// Splitting the string into parameters
-	char *parameters[4]; // Assuming a maximum of 4 parameters
-	int num_parameters = 0;
-
-	char *token = strtok(test_str, " ");
-	while (token != NULL && num_parameters < 4) {
-		parameters[num_parameters++] = token;
-		token = strtok(NULL, " ");
-	}
-
-	// Print the split parameters
-	for (int i = 0; i < num_parameters; i++) {
-		printf("parameter%d = \"%s\"\n", i + 1, parameters[i]);
-	}
-
-	// add each parameter to the variable
-	if (num_parameters >= 1 && strcmp(parameters[0], "azureconfig") == 0) {
-		// Check if parameter1 is "azureconfig"
-		// Store parameter2 in scopeID
-		scopeID = parameters[1];
-
-		// Store parameter3 in devID
-		devID = parameters[2];
-
-		// Store parameter4 in keepalivetime (convert to int)
-		keepalivetime = atoi(parameters[3]);
-	}
-
-	// Print the scopeID etc.
-	printf("scopeID: %s\n", scopeID);
-	printf("devID: %s\n", devID);
-	printf("keepalivetime: %d\n", keepalivetime);
-
-}
-
-
-// Extract Config Data
-int extractDataFromJSON(const char *jsonString, const char *key, char *value, int valueSize) {
-    const char *start = jsonString;
-    char searchKey[256]; // Create a temporary buffer for the key with quotes
-    snprintf(searchKey, sizeof(searchKey), "\"%s\"", key);
-
-    while ((start = strstr(start, searchKey)) != NULL) {
-        // Move past the key and find the colon
-        start += strlen(searchKey);
-        const char *colon = strchr(start, ':');
-
-        if (colon == NULL) {
-            continue; // Key without a colon
-        }
-
-        // Move past the colon and find the start of the value
-        start = colon + 1;
-
-        while (*start != '\0' && (*start == ' ' || *start == '\"' || *start == '{')) {
-            start++;
-        }
-
-        if (*start != '\0') {
-            // Found the value, extract it
-            const char *end = start;
-            int braceCount = 0; // Track nested braces
-
-            // Find the end of the value, considering nested braces
-            while (*end != '\0') {
-                if (*end == '{') {
-                    braceCount++;
-                } else if (*end == '}') {
-                    braceCount--;
-                }
-
-                if (braceCount == 0 && (*end == ',' || *end == '}')) {
-                    break; // End of the value reached
-                }
-
-                end++;
-            }
-
-            int length = end - start;
-
-            if (length >= valueSize) {
-                return 0; // Value too large for buffer
-            }
-
-            strncpy(value, start, length);
-            value[length] = '\0';
-
-            // Remove leading and trailing double quotes
-            if (value[0] == '\"') {
-                memmove(value, value + 1, length - 1);
-                value[length - 1] = '\0';
-            }
-
-            // Remove trailing double quote
-            if (value[length - 1] == '\"') {
-                value[length - 1] = '\0';
-            }
-
-            return 1; // Successfully extracted value
-        }
-    }
-
-    return 0; // Key not found or JSON is malformed
+	sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"Adra\",%d\r\n", test_str_len);
+	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
+	printf("Publishing Data\r\n");
+	WE_Delay(2400);
+	sprintf(cmdBuffer, "%s\r\n", test_str);
+	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
 }
 

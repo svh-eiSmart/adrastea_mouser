@@ -218,7 +218,6 @@ uint32_t serial_read(serial_handle *handle, char *buf, uint32_t len) {
     buf[index] = c;
     //if(sHandle->uartHwIndx == 2)
      //printf("Serial read: HwIdx:%d Q:%p buf:%c buf_c: %c\r\n",sHandle->uartHwIndx,sHandle->xQueue_rx, c, &c);
-     //Adrastea_HandleRxByte(buf);
      //printf("buf:%c \r\n", c);
 
   }

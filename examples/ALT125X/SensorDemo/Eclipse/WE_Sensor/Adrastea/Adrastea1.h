@@ -248,7 +248,7 @@ extern int Init_Uart();
 extern void rxUartTask(void *pvParameters);
 extern int connect_IoTCentral();
 extern int connect_mqttdashboard();
-extern int mqttdashboard_publish(float temperature_PADS, float pressure_PADS, float temperature_TIDS, float ITDSsensorData_temperature, float ITDSsensorData_Xaxis_float, float ITDSsensorData_Yaxis_float, float ITDSsensorData_Zaxis_float);
+extern int mqttdashboard_publish();
 extern int IoTCentral_publish(float temperature_PADS, float pressure_PADS, float temperature_TIDS, float ITDSsensorData_temperature, float ITDSsensorData_Xaxis_float, float ITDSsensorData_Yaxis_float, float ITDSsensorData_Zaxis_float);
 extern int azureconfig_input();
 //extern void extractOperationId(char *inputString);

@@ -38,7 +38,7 @@ static const char *ATPacketDomain_PDP_Type_Strings[ATPacketDomain_PDP_Type_Numbe
 		"IPV6",
 		"IPV4V6",
 		"Non−IP", };
-
+// serial_handle *modemUartHandle = NULL;
 /**
  * @brief Set Network Registration Result Code (using the AT+CEREG command).
  *
@@ -81,15 +81,20 @@ bool ATPacketDomain_SetNetworkRegistrationResultCode(ATPacketDomain_Network_Regi
 			return false;
 		}
 
-		if (!Adrastea_SendRequest(pRequestCommand))
+		/* if (!Adrastea_SendRequest(pRequestCommand))
 		{
 			return false;
-		}
+		} */
 
-		if (!Adrastea_WaitForConfirm(ADRASTEA_TIMEOUT_PROPRIETARY, Adrastea_CNFStatus_Success, NULL))
+		 Adrastea_SendRequest(pRequestCommand);
+		// size_t dataLength = strlen(pRequestCommand);
+		// serial_write(modemUartHandle, pRequestCommand, dataLength);
+
+		/*if (!Adrastea_WaitForConfirm(ADRASTEA_TIMEOUT_PROPRIETARY, Adrastea_CNFStatus_Success, NULL))
 		{
 			return false;
-		}
+		}*/
+		//Adrastea_WaitForConfirm(ADRASTEA_TIMEOUT_PROPRIETARY, Adrastea_CNFStatus_Success, NULL);
 
 		return true;
 }
