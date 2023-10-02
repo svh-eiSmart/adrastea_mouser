@@ -87,7 +87,6 @@ static int startSensorTask(void *pvParameters)
 	for(;;)
 	{
 
-
 		if(WE_FAIL == mqttdashboard_publish())
 		{
 			printf("Could not publish to MQTT broker\r\n");

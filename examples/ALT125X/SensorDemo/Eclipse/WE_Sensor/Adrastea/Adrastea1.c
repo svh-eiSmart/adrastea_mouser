@@ -810,7 +810,7 @@ bool Adrastea_CheckATMode()
 
 // ========================================================== NEW IoTCentral PnP functions  ===================================================================================
 
-extern void rxUartTask(void *pvParameters) {
+/* extern void rxUartTask(void *pvParameters) {
 
 	int currentChar = 0;
 	while (1) {
@@ -820,7 +820,7 @@ extern void rxUartTask(void *pvParameters) {
 			serial_write(userUartHandle, &c, 1);
 
 			// Check for newline character carriage return, or space character to process response
-			if (c == '\n' || c == '\r' ) {
+			 if (c == '\n' || c == '\r' ) {
 				// Null-terminate the response
 				responseBuffer[responseIndex] = '\0';
 				// printf("Here is the response buffer: %s\n", responseBuffer);
@@ -851,6 +851,20 @@ extern void rxUartTask(void *pvParameters) {
 			}
 		}
 
+	}
+} */
+
+extern void rxUartTask(void *pvParameters) {
+	int currentChar = 0;
+	char c,s;
+	while (1) {
+
+
+		if (serial_read(modemUartHandle, &c, 1) > 0) {
+					// Print received character to user UART
+					serial_write(userUartHandle, &c, 1);
+					//printf("data received modem: %c",c);
+		}
 	}
 }
 
@@ -928,36 +942,91 @@ int IoTCentral_publish(float temperature_PADS, float pressure_PADS, float temper
 }
 
 // Publish to mqttdashboard public broker
-int mqttdashboard_publish(){
+/*int mqttdashboard_publish(){
 	memset(test_str, 0, sizeof(test_str));
 	test_str_index = 0;
+	printf(" At mqttpublish func\r\n");
 	// to read from MiniConsole of Host MCU
 	do {
 		serial_read(userUartHandle, &c, 1);
 		if (c != 10) {
 			//serial_write(modemUartHandle, &c, 1);
 			serial_write(userUartHandle, &c, 1);
+			printf("%c",c);
+			//printf("%c",c);
 			test_str[test_str_index++] = c; // Store the character in test_str array
 		}
 	} while (c != 10);
 
+
 	test_str[test_str_index] = '\0'; // Null-terminate the string
 	printf("MAP CLI Closed.\r\nUser input:\r\n");
-	printf("%s\n",test_str); // Print the collected input
+	printf("%s\r\n",test_str); // Print the collected input
 	size_t len = strlen(test_str);
 	if (len >= 4) {
 		// Remove the first 4 characters
 		memmove(test_str, test_str + 4, len - 3);}
 
-	printf("Modified string: %s\n", test_str);
+	printf("Modified string: %s\r\n", test_str);
 	test_str_len = strlen(test_str)+1;
 
 	char* substr = strstr(test_str, "detected");
 
 	if (substr != NULL) {
-		printf("Bug found.\n");
+		printf("Bug found.\r\n");
 	} else {
-		printf("Bug not available.\n");
+		printf("Bug not available.\r\n");
+	}
+
+	sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"Adra\",%d\r\n", test_str_len);
+	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
+	printf("Publishing Data\r\n");
+	WE_Delay(2400);
+	sprintf(cmdBuffer, "%s\r\n", test_str);
+	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
+} */
+
+int mqttdashboard_publish(){
+	memset(test_str, 0, sizeof(test_str));
+	test_str_index = 0;
+	//printf(" At mqttpublish func\r\n");
+	 int flag_prev_char_cr = 0;
+	// to read from MiniConsole of Host MCU
+	    do {
+	        serial_read(userUartHandle, &c, 1);
+
+	        if (c == '\r') {
+	            flag_prev_char_cr = 1;  // Set the flag if the character is '\r'
+	        } else if (c == '\n' && flag_prev_char_cr == 1) {
+	            // Break the loop if current character is '\n' and previous was '\r'
+	            break;
+	        } else {
+	            flag_prev_char_cr = 0;  // Reset the flag if the character is not '\r'
+	            //serial_write(modemUartHandle, &c, 1);
+	            serial_write(userUartHandle, &c, 1);
+	            //printf("%c", c);
+	            test_str[test_str_index++] = c;
+	        }
+	    } while (1);
+
+
+	test_str[test_str_index] = '\0'; // Null-terminate the string
+	printf("User input:\r\n");
+	printf("%s\r\n",test_str); // Print the collected input
+	size_t len = strlen(test_str);
+	if (len >= 4) {
+		// Remove the first 4 characters
+		memmove(test_str, test_str + 4, len - 3);}
+
+	printf("Modified string: %s\r\n", test_str);
+	test_str_len = strlen(test_str)+1;
+
+	char* substr = strstr(test_str, "detected");
+
+	if (substr != NULL) {
+		printf("Bug found.\r\n");
+	} else {
+		printf("Bug not available.\r\n");
 	}
 
 	sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"Adra\",%d\r\n", test_str_len);
