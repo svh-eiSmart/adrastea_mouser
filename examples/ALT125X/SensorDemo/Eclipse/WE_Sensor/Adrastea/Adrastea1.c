@@ -918,16 +918,16 @@ int connect_mqttdashboard(){
 	//sprintf(cmdBuffer, "AT%%MQTTCFG=\"NODES\",1,\"adrastea-test-dev-1\",\"broker.hivemq.com\"\r\n");
 	//serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
 	ret =  ATMQTT_ConfigureNodes(1,"adrastea-test-dev-1","broker.hivemq.com",NULL,NULL);
-	AdrasteaExamplesPrint("Configure Node", ret);
+	//AdrasteaExamplesPrint("Configure Node", ret);
 	WE_Delay(4000);
 
 	ret = false;
 	ret = ATMQTT_ConfigureProtocol(1, 1200, 1);
-	AdrasteaExamplesPrint("Configure Protocol", ret);
+	//AdrasteaExamplesPrint("Configure Protocol", ret);
 	WE_Delay(4000);
 
 	ret = ATMQTT_Connect(1);
-	AdrasteaExamplesPrint("Connect", ret);
+	//AdrasteaExamplesPrint("Connect", ret);
 	WE_Delay(4000);
 }
 
@@ -986,10 +986,10 @@ int IoTCentral_publish(float temperature_PADS, float pressure_PADS, float temper
 	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
 } */
 
-int mqttdashboard_publish(){
+/*int mqttdashboard_publish(){
 	memset(test_str, 0, sizeof(test_str));
 	test_str_index = 0;
-	//printf(" At mqttpublish func\r\n");
+	printf(" At mqttpublish func\r\n");
 	 int flag_prev_char_cr = 0;
 	// to read from MiniConsole of Host MCU
 	    do {
@@ -1028,12 +1028,66 @@ int mqttdashboard_publish(){
 	} else {
 		printf("Bug not available.\r\n");
 	}
-
+	//memset(cmdBuffer, 0, sizeof(cmdBuffer));
 	sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"Adra\",%d\r\n", test_str_len);
 	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
-	printf("Publishing Data\r\n");
+	//printf("Publishing Data\r\n");
 	WE_Delay(2400);
 	sprintf(cmdBuffer, "%s\r\n", test_str);
 	serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
 }
+*/
+
+int mqttdashboard_publish(){
+	memset(test_str, 0, sizeof(test_str));
+	test_str_index = 0;
+	printf(" At mqttpublish func\r\n");
+	 int flag_prev_char_cr = 0;
+	// to read from MiniConsole of Host MCU
+	    do {
+	        serial_read(userUartHandle, &c, 1);
+
+	        if (c == '\r') {
+	            flag_prev_char_cr = 1;  // Set the flag if the character is '\r'
+	        } else if (c == '\n' && flag_prev_char_cr == 1) {
+	            // Break the loop if current character is '\n' and previous was '\r'
+	            break;
+	        } else {
+	            flag_prev_char_cr = 0;  // Reset the flag if the character is not '\r'
+	            //serial_write(modemUartHandle, &c, 1);
+	            serial_write(userUartHandle, &c, 1);
+	            //printf("%c", c);
+	            test_str[test_str_index++] = c;
+	        }
+	    } while (1);
+
+
+	test_str[test_str_index] = '\0'; // Null-terminate the string
+	printf("User input:\r\n");
+	printf("%s\r\n",test_str); // Print the collected input
+	size_t len = strlen(test_str);
+	if (len >= 4) {
+		// Remove the first 4 characters
+		memmove(test_str, test_str + 4, len - 3);}
+
+	printf("Modified string: %s\r\n", test_str);
+	test_str_len = strlen(test_str)+1;
+
+	char* substr = strstr(test_str, "detected");
+
+	if (substr != NULL) {
+		printf("Bug found.\r\n");
+		sprintf(cmdBuffer, "AT%%MQTTCMD=\"PUBLISH\",1,0,0,\"Adra\",%d\r\n", test_str_len);
+		serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
+		//printf("Publishing Data\r\n");
+		WE_Delay(2400);
+		sprintf(cmdBuffer, "%s\r\n", test_str);
+		serial_write(modemUartHandle, cmdBuffer, strlen(cmdBuffer));
+	} else {
+		printf("Bug not available.\r\n");
+	}
+	//memset(cmdBuffer, 0, sizeof(cmdBuffer));
+
+}
+
 

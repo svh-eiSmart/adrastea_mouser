@@ -72,7 +72,7 @@ static int startSensorTask(void *pvParameters)
 		}
 	WE_Delay(1000);
 
-	ATProprietary_Ping(ATProprietary_IP_Addr_Format_IPv4, "8.8.8.8", ATProprietary_Ping_Packet_Count_Invalid, ATProprietary_Ping_Packet_Size_Invalid, ATProprietary_Ping_Timeout_Invalid);
+	//ATProprietary_Ping(ATProprietary_IP_Addr_Format_IPv4, "8.8.8.8", ATProprietary_Ping_Packet_Count_Invalid, ATProprietary_Ping_Packet_Size_Invalid, ATProprietary_Ping_Timeout_Invalid);
 	WE_Delay(2000);
 	//ATProprietary_ResolveDomainName(1, "www.google.com", ATProprietary_IP_Addr_Format_IPv4);
 
